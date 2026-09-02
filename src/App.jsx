@@ -4,6 +4,8 @@ import { useIframeAutoBootstrap } from "./hooks/useIframeAutoBootstrap.js";
 import { ToastProvider } from "./contexts/ToastContext.jsx";
 import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 
+const BACKEND_URL = "https://ai-agent-backend-nama.onrender.com";
+
 function AppContent() {
   const [message, setMessage] = useState("");
 
@@ -15,6 +17,7 @@ function AppContent() {
   ]);
 
   const [store, setStore] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   const {
     embedded,
@@ -29,12 +32,11 @@ function AppContent() {
 
   const { iframeMode } = useIframeAutoBootstrap(bootstrap);
 
+  // جلب بيانات المتجر
   useEffect(() => {
     if (!isReady) return;
 
-    fetch(
-      "https://ai-agent-backend-nama.onrender.com/agent/store-info"
-    )
+    fetch(`${BACKEND_URL}/agent/store-info`)
       .then((response) => response.json())
       .then((data) => {
         if (data.success) {
@@ -46,24 +48,66 @@ function AppContent() {
       });
   }, [isReady]);
 
-  const sendMessage = () => {
+  // إرسال الرسالة للذكاء الاصطناعي
+  const sendMessage = async () => {
     const text = message.trim();
 
-    if (!text) return;
+    if (!text || isSending) return;
 
-    setMessages((current) => [
-      ...current,
+    const updatedMessages = [
+      ...messages,
       {
         role: "user",
         text,
       },
-      {
-        role: "assistant",
-        text: "وصلت فكرتك. قريبًا ببدأ أنفذها لك داخل المتجر.",
-      },
-    ]);
+    ];
 
+    setMessages(updatedMessages);
     setMessage("");
+    setIsSending(true);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/agent/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map((item) => ({
+            role: item.role,
+            content: item.text,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي"
+        );
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: data.message,
+        },
+      ]);
+    } catch (error) {
+      console.error("AI chat error:", error);
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: "صار خطأ أثناء الاتصال بالوكيل الذكي. حاول مرة ثانية.",
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleKeyDown = (event) => {
@@ -72,6 +116,13 @@ function AppContent() {
       sendMessage();
     }
   };
+
+  const quickActions = [
+    "صمم لي متجر كامل",
+    "رتب الصفحة الرئيسية",
+    "جهز المنتجات والأوصاف",
+    "غير تصميم المتجر",
+  ];
 
   return (
     <div
@@ -85,6 +136,7 @@ function AppContent() {
         flexDirection: "column",
       }}
     >
+      {/* Header */}
       <header
         style={{
           height: "72px",
@@ -94,6 +146,7 @@ function AppContent() {
           justifyContent: "space-between",
           padding: "0 28px",
           background: "#151515",
+          boxSizing: "border-box",
         }}
       >
         <div>
@@ -140,6 +193,7 @@ function AppContent() {
         </div>
       </header>
 
+      {/* Main */}
       <main
         style={{
           flex: 1,
@@ -150,6 +204,7 @@ function AppContent() {
           boxSizing: "border-box",
         }}
       >
+        {/* Title */}
         <section style={{ marginBottom: "30px" }}>
           <h1
             style={{
@@ -172,6 +227,7 @@ function AppContent() {
           </p>
         </section>
 
+        {/* Store */}
         <section
           style={{
             background: "#181818",
@@ -211,6 +267,7 @@ function AppContent() {
           </div>
         </section>
 
+        {/* Quick Actions */}
         <section
           style={{
             display: "grid",
@@ -220,15 +277,11 @@ function AppContent() {
             marginBottom: "30px",
           }}
         >
-          {[
-            "صمم لي متجر كامل",
-            "رتب الصفحة الرئيسية",
-            "جهز المنتجات والأوصاف",
-            "غير تصميم المتجر",
-          ].map((item) => (
+          {quickActions.map((item) => (
             <button
               key={item}
               onClick={() => setMessage(item)}
+              disabled={isSending}
               style={{
                 background: "#1b1b1b",
                 color: "#fff",
@@ -236,8 +289,9 @@ function AppContent() {
                 borderRadius: "14px",
                 padding: "18px",
                 textAlign: "right",
-                cursor: "pointer",
+                cursor: isSending ? "default" : "pointer",
                 fontSize: "15px",
+                opacity: isSending ? 0.6 : 1,
               }}
             >
               {item}
@@ -245,6 +299,7 @@ function AppContent() {
           ))}
         </section>
 
+        {/* Chat */}
         <section
           style={{
             background: "#181818",
@@ -253,6 +308,7 @@ function AppContent() {
             overflow: "hidden",
           }}
         >
+          {/* Messages */}
           <div
             style={{
               padding: "20px",
@@ -287,14 +343,38 @@ function AppContent() {
                     borderRadius: "14px",
                     padding: "12px 15px",
                     lineHeight: "1.7",
+                    whiteSpace: "pre-wrap",
                   }}
                 >
                   {item.text}
                 </div>
               </div>
             ))}
+
+            {isSending && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginBottom: "14px",
+                }}
+              >
+                <div
+                  style={{
+                    background: "#222222",
+                    border: "1px solid #303030",
+                    borderRadius: "14px",
+                    padding: "12px 15px",
+                    color: "#999",
+                  }}
+                >
+                  جاري التفكير...
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Input */}
           <div
             style={{
               borderTop: "1px solid #292929",
@@ -311,6 +391,7 @@ function AppContent() {
               onKeyDown={handleKeyDown}
               placeholder="اكتب وش تبي أسوي في متجرك..."
               rows={2}
+              disabled={isSending}
               style={{
                 flex: 1,
                 resize: "none",
@@ -322,23 +403,31 @@ function AppContent() {
                 outline: "none",
                 fontSize: "15px",
                 fontFamily: "Arial, Tahoma, sans-serif",
+                opacity: isSending ? 0.6 : 1,
               }}
             />
 
             <button
               onClick={sendMessage}
+              disabled={isSending || !message.trim()}
               style={{
                 width: "110px",
                 border: "none",
                 borderRadius: "12px",
-                background: "#ffffff",
+                background:
+                  isSending || !message.trim()
+                    ? "#555"
+                    : "#ffffff",
                 color: "#111111",
                 fontWeight: "700",
-                cursor: "pointer",
+                cursor:
+                  isSending || !message.trim()
+                    ? "default"
+                    : "pointer",
                 fontSize: "15px",
               }}
             >
-              إرسال
+              {isSending ? "..." : "إرسال"}
             </button>
           </div>
         </section>
