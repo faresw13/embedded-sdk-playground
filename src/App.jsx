@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAppBootstrap } from "./hooks/useAppBootstrap.js";
 import { useIframeAutoBootstrap } from "./hooks/useIframeAutoBootstrap.js";
+import { ToastProvider } from "./contexts/ToastContext.jsx";
+import { ThemeProvider } from "./contexts/ThemeContext.jsx";
 
-function App() {
+function AppContent() {
   const [message, setMessage] = useState("");
+
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -13,19 +16,15 @@ function App() {
 
   const [store, setStore] = useState(null);
 
-  const handleThemeChange = useCallback(() => {}, []);
-  const handleActionClick = useCallback(() => {}, []);
-
   const {
     embedded,
     isReady,
-    layout,
     bootstrap,
   } = useAppBootstrap({
     debug: true,
     autoInit: false,
-    onThemeChange: handleThemeChange,
-    onActionClick: handleActionClick,
+    onThemeChange: () => {},
+    onActionClick: () => {},
   });
 
   const { iframeMode } = useIframeAutoBootstrap(bootstrap);
@@ -33,7 +32,9 @@ function App() {
   useEffect(() => {
     if (!isReady) return;
 
-    fetch("https://ai-agent-backend-nama.onrender.com/agent/store-info")
+    fetch(
+      "https://ai-agent-backend-nama.onrender.com/agent/store-info"
+    )
       .then((response) => response.json())
       .then((data) => {
         if (data.success) {
@@ -79,13 +80,11 @@ function App() {
         minHeight: "100vh",
         background: "#111111",
         color: "#ffffff",
-        fontFamily:
-          "Arial, Tahoma, sans-serif",
+        fontFamily: "Arial, Tahoma, sans-serif",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Header */}
       <header
         style={{
           height: "72px",
@@ -141,7 +140,6 @@ function App() {
         </div>
       </header>
 
-      {/* Main */}
       <main
         style={{
           flex: 1,
@@ -152,12 +150,7 @@ function App() {
           boxSizing: "border-box",
         }}
       >
-        {/* Welcome */}
-        <section
-          style={{
-            marginBottom: "30px",
-          }}
-        >
+        <section style={{ marginBottom: "30px" }}>
           <h1
             style={{
               margin: 0,
@@ -179,7 +172,6 @@ function App() {
           </p>
         </section>
 
-        {/* Store Card */}
         <section
           style={{
             background: "#181818",
@@ -219,7 +211,6 @@ function App() {
           </div>
         </section>
 
-        {/* Quick actions */}
         <section
           style={{
             display: "grid",
@@ -254,7 +245,6 @@ function App() {
           ))}
         </section>
 
-        {/* Chat */}
         <section
           style={{
             background: "#181818",
@@ -305,7 +295,6 @@ function App() {
             ))}
           </div>
 
-          {/* Input */}
           <div
             style={{
               borderTop: "1px solid #292929",
@@ -332,8 +321,7 @@ function App() {
                 padding: "13px",
                 outline: "none",
                 fontSize: "15px",
-                fontFamily:
-                  "Arial, Tahoma, sans-serif",
+                fontFamily: "Arial, Tahoma, sans-serif",
               }}
             />
 
@@ -356,6 +344,16 @@ function App() {
         </section>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 
